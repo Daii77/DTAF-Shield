@@ -1,0 +1,119 @@
+# run_dtaf.tcl
+# Usage:
+#   ns run_dtaf.tcl <defense> <attack_pps> <outprefix>
+# defense: none | static | dtaf
+# attack_pps: 0 / 200 / 500 / 1000
+# outprefix: results/run1
+
+if {$argc < 3} {
+    puts "Usage: ns run_dtaf.tcl <defense:none|static|dtaf> <attack_pps> <outprefix>"
+    exit 1
+}
+
+set defense   [lindex $argv 0]
+set attackpps [expr int([lindex $argv 1])]
+set outpre    [lindex $argv 2]
+
+set simTime 60.0
+set attackStart 10.0
+
+# Create simulator
+set ns [new Simulator]
+
+# Trace
+set tr [open "${outpre}.tr" w]
+$ns trace-all $tr
+
+# Nodes (20 nodes total per scenarios) :contentReference[oaicite:4]{index=4}
+# We'll use 4 active nodes + 16 dummy nodes to match count.
+set N 20
+for {set i 0} {$i < $N} {incr i} {
+    set n($i) [$ns node]
+}
+
+# Active topology: n0 legit src, n1 attacker, n2 router, n3 sink
+# Links
+$ns duplex-link $n(0) $n(2) 10Mb 10ms DropTail
+$ns duplex-link $n(1) $n(2) 10Mb 10ms DropTail
+
+# Router -> sink link uses either DropTail, Static, or DTAF queue
+# We'll create a link with Queue/DTAF then configure its mode.
+$ns duplex-link $n(2) $n(3) 2Mb 20ms DTAF
+
+# Get queue object on link (2->3)
+set link_23 [$ns link $n(2) $n(3)]
+set q23 [$link_23 queue]
+
+# Configure defense
+if {$defense == "none"} {
+    # mode 2 = none (acts like DropTail)
+    $q23 set mode_ 2
+} elseif {$defense == "static"} {
+    # mode 1 = static
+    $q23 set mode_ 1
+    # static threshold in pps (tune as you like)
+    $q23 set static_threshold_ 250.0
+} elseif {$defense == "dtaf"} {
+    # mode 0 = adaptive DTAF
+    $q23 set mode_ 0
+    $q23 set measure_interval_ 1.0
+    $q23 set adjustment_factor_ 2.0
+    $q23 set ema_alpha_ 0.2
+} else {
+    puts "Invalid defense: $defense"
+    exit 1
+}
+
+# Enable DTAF log (separate file)
+$q23 logfile "${outpre}.dtaf.log"
+
+# Traffic: UDP + CBR
+# Legitimate traffic: 50 Kbps (report) :contentReference[oaicite:5]{index=5}
+set udp_leg [new Agent/UDP]
+$udp_leg set fid_ 1
+$ns attach-agent $n(0) $udp_leg
+
+set null_leg [new Agent/Null]
+$ns attach-agent $n(3) $null_leg
+$ns connect $udp_leg $null_leg
+
+set cbr_leg [new Application/Traffic/CBR]
+$cbr_leg set packetSize_ 1000
+$cbr_leg set rate_ 50Kb
+$cbr_leg attach-agent $udp_leg
+
+# Attack traffic: UDP Flood at attackpps pps (200/500/1000) :contentReference[oaicite:6]{index=6}
+set udp_att [new Agent/UDP]
+$udp_att set fid_ 2
+$ns attach-agent $n(1) $udp_att
+
+set null_att [new Agent/Null]
+$ns attach-agent $n(3) $null_att
+$ns connect $udp_att $null_att
+
+set cbr_att [new Application/Traffic/CBR]
+$cbr_att set packetSize_ 512
+if {$attackpps > 0} {
+    set interval [expr 1.0 / double($attackpps)]
+    $cbr_att set interval_ $interval
+} else {
+    $cbr_att set interval_ 1.0
+}
+$cbr_att attach-agent $udp_att
+
+# Schedule
+$ns at 0.5 "$cbr_leg start"
+if {$attackpps > 0} {
+    $ns at $attackStart "$cbr_att start"
+}
+$ns at $simTime "finish"
+
+proc finish {} {
+    global ns tr outpre
+    $ns flush-trace
+    close $tr
+    puts "Done. Trace: ${outpre}.tr  DTAF log: ${outpre}.dtaf.log"
+    exit 0
+}
+
+$ns run

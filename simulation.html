@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}Simulation{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Network <span class="gradient-text">Simulation</span></h1>
+        <p class="page-subtitle">Live animated DoS attack simulation with real-time defense monitoring</p>
+    </div>
+</div>
+
+<div class="sim-layout">
+    <!-- Config Panel -->
+    <aside class="sim-config-panel">
+        <div class="palette-header">
+            <i class="bi bi-gear-fill me-2"></i>Simulation Config
+        </div>
+
+        <form id="simulationForm" class="sim-form">
+            <!-- Defense Mode -->
+            <div class="sim-field">
+                <label class="sim-label">Defense Mode</label>
+                <div class="mode-selector" id="modeSelector">
+                    <div class="mode-option active" data-value="none">
+                        <div class="mode-icon"><i class="bi bi-slash-circle"></i></div>
+                        <div class="mode-text">
+                            <span class="mode-name">None</span>
+                            <span class="mode-desc">No protection</span>
+                        </div>
+                    </div>
+                    <div class="mode-option" data-value="static">
+                        <div class="mode-icon"><i class="bi bi-sliders"></i></div>
+                        <div class="mode-text">
+                            <span class="mode-name">Static</span>
+                            <span class="mode-desc">Fixed threshold (800 pps)</span>
+                        </div>
+                    </div>
+                    <div class="mode-option" data-value="dtaf">
+                        <div class="mode-icon"><i class="bi bi-shield-fill-check"></i></div>
+                        <div class="mode-text">
+                            <span class="mode-name">DTAF</span>
+                            <span class="mode-desc">Adaptive (Recommended)</span>
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" id="defenseMode" value="none">
+            </div>
+
+            <!-- Attack Rate -->
+            <div class="sim-field">
+                <label class="sim-label">Attack Rate (pps)</label>
+                <div class="attack-slider-wrap">
+                    <input type="range" class="attack-slider" id="attackSlider" min="0" max="2000" step="100" value="0">
+                    <div class="attack-slider-labels">
+                        <span>0</span><span>500</span><span>1000</span><span>1500</span><span>2000</span>
+                    </div>
+                </div>
+                <div class="attack-value-display">
+                    <div class="attack-value-num" id="attackPpsDisplay">0</div>
+                    <div class="attack-value-label">pps</div>
+                    <div class="attack-intensity" id="attackIntensity"
+                         style="background:rgba(100,116,139,0.15);color:#64748b;border:1px solid rgba(100,116,139,0.2);">
+                        No Attack
+                    </div>
+                </div>
+                <input type="hidden" id="attackPps" value="0">
+            </div>
+
+            <!-- Duration -->
+            <div class="sim-field">
+                <label class="sim-label">Duration: <span id="durationDisplay" class="text-primary fw-bold">60s</span></label>
+                <input type="range" class="attack-slider" id="durationSlider" min="10" max="300" step="10" value="60">
+                <div class="attack-slider-labels"><span>10s</span><span>150s</span><span>300s</span></div>
+                <input type="hidden" id="duration" value="60">
+            </div>
+
+            <!-- Topology Source -->
+            <div class="sim-field">
+                <label class="sim-label">Topology Source</label>
+                <div class="topology-source-toggle">
+                    <button type="button" class="tsrc-btn active" id="srcDefault">
+                        <i class="bi bi-grid-1x2 me-1"></i>Default
+                    </button>
+                    <button type="button" class="tsrc-btn" id="srcWorkspace">
+                        <i class="bi bi-diagram-3 me-1"></i>My Workspace
+                    </button>
+                </div>
+                <div id="wsTopologyInfo" class="ws-topo-info d-none mt-1">
+                    <div id="wsTopoDetails"></div>
+                </div>
+            </div>
+
+            <button type="submit" class="run-btn" id="runBtn">
+                <div class="run-btn-inner">
+                    <i class="bi bi-play-fill run-btn-icon"></i>
+                    <span class="run-btn-text">Launch Simulation</span>
+                </div>
+            </button>
+        </form>
+
+        <!-- Live Stats -->
+        <div id="liveStats" class="live-stats d-none">
+            <div class="live-stats-header">
+                <div class="live-pulse"></div>
+                <span>Live Monitoring</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" id="simProgress"></div>
+            </div>
+            <div class="progress-labels">
+                <span id="simTimeLabel">0s</span>
+                <span id="simDurationLabel">60s</span>
+            </div>
+            <div class="live-metric-grid">
+                <div class="live-metric">
+                    <div class="lm-value text-success" id="statLegitSent">0</div>
+                    <div class="lm-label">Legit Sent</div>
+                </div>
+                <div class="live-metric">
+                    <div class="lm-value text-danger" id="statAttackSent">0</div>
+                    <div class="lm-label">Attack Sent</div>
+                </div>
+                <div class="live-metric">
+                    <div class="lm-value text-info" id="statReceived">0</div>
+                    <div class="lm-label">Received</div>
+                </div>
+                <div class="live-metric">
+                    <div class="lm-value text-warning" id="statBlocked">0</div>
+                    <div class="lm-label">Blocked</div>
+                </div>
+            </div>
+            <div class="live-kpi-grid">
+                <div class="kpi-item">
+                    <div class="kpi-val" id="statThru">-- Kbps</div>
+                    <div class="kpi-lbl">Throughput</div>
+                </div>
+                <div class="kpi-item">
+                    <div class="kpi-val" id="statDelay">-- ms</div>
+                    <div class="kpi-lbl">Delay</div>
+                </div>
+                <div class="kpi-item">
+                    <div class="kpi-val" id="statLoss">-- %</div>
+                    <div class="kpi-lbl">Loss</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Visualization + Charts -->
+    <div class="sim-main">
+        <div class="sim-canvas-wrap">
+            <div class="sim-canvas-header">
+                <span class="sim-canvas-title"><i class="bi bi-router-fill me-2 text-primary"></i>Network Visualization</span>
+                <div class="legend">
+                    <span class="legend-item"><span class="legend-dot" style="background:#10b981"></span>Legitimate</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>Attack</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:#6366f1"></span>Filtered</span>
+                </div>
+            </div>
+            <canvas id="networkCanvas"></canvas>
+        </div>
+
+        <!-- Mini Charts (shown after sim) -->
+        <div id="miniCharts" class="mini-charts d-none">
+            <div class="mini-chart-card">
+                <div class="mini-chart-title"><i class="bi bi-activity text-danger me-1"></i>Traffic Flow (pps)</div>
+                <div class="mini-chart-body"><canvas id="trafficChart"></canvas></div>
+            </div>
+            <div class="mini-chart-card">
+                <div class="mini-chart-title"><i class="bi bi-shield-check text-primary me-1"></i>Defense Action</div>
+                <div class="mini-chart-body"><canvas id="defenseChart"></canvas></div>
+            </div>
+            <div class="mini-chart-card">
+                <div class="mini-chart-title"><i class="bi bi-speedometer2 text-success me-1"></i>Throughput (Kbps)</div>
+                <div class="mini-chart-body"><canvas id="liveChart"></canvas></div>
+            </div>
+            <div class="mini-chart-card">
+                <div class="mini-chart-title"><i class="bi bi-stopwatch text-warning me-1"></i>Delay (ms)</div>
+                <div class="mini-chart-body"><canvas id="delayLiveChart"></canvas></div>
+            </div>
+        </div>
+
+        <div id="simActions" class="sim-actions d-none">
+            <a href="/results" class="btn-primary-action"><i class="bi bi-bar-chart-fill me-2"></i>Full Analytics</a>
+            <a href="/compare" class="btn-secondary-action"><i class="bi bi-layers-fill me-2"></i>Compare Modes</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

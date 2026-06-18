@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+{% block title %}Network Workspace{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Network <span class="gradient-text">Workspace</span></h1>
+        <p class="page-subtitle">Build your network topology — drag devices, connect them, then launch a simulation</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <button class="btn-secondary-action" id="clearCanvas"><i class="bi bi-trash3 me-1"></i>Clear</button>
+        <button class="btn-secondary-action" id="saveWorkspace"><i class="bi bi-save2 me-1"></i>Save</button>
+        <button class="btn-secondary-action" id="loadWorkspace"><i class="bi bi-folder2-open me-1"></i>Load</button>
+        <button class="btn-primary-action" id="goSimulate"><i class="bi bi-play-fill me-1"></i>Simulate This Topology</button>
+    </div>
+</div>
+
+<div class="workspace-layout">
+    <!-- Device Palette -->
+    <aside class="device-palette">
+        <div class="palette-header">
+            <i class="bi bi-grid-3x3-gap-fill me-2"></i>
+            Network Devices
+        </div>
+        
+        <div class="palette-section-label">Infrastructure</div>
+        
+        <div class="device-item" draggable="true" data-type="router" data-label="Router">
+            <div class="device-item-icon router-icon"><i class="bi bi-router-fill"></i></div>
+            <div class="device-item-info">
+                <span class="device-item-name">Router</span>
+                <span class="device-item-desc">Layer 3 routing</span>
+            </div>
+            <span class="device-item-badge">L3</span>
+        </div>
+        
+        <div class="device-item" draggable="true" data-type="switch" data-label="Switch">
+            <div class="device-item-icon switch-icon"><i class="bi bi-hdd-network-fill"></i></div>
+            <div class="device-item-info">
+                <span class="device-item-name">Switch</span>
+                <span class="device-item-desc">Layer 2 switching</span>
+            </div>
+            <span class="device-item-badge">L2</span>
+        </div>
+        
+        <div class="device-item" draggable="true" data-type="server" data-label="Server">
+            <div class="device-item-icon server-icon"><i class="bi bi-server"></i></div>
+            <div class="device-item-info">
+                <span class="device-item-name">Server</span>
+                <span class="device-item-desc">Target/Sink node</span>
+            </div>
+            <span class="device-item-badge">SRV</span>
+        </div>
+        
+        <div class="palette-section-label">Endpoints</div>
+        
+        <div class="device-item" draggable="true" data-type="client" data-label="Client">
+            <div class="device-item-icon client-icon"><i class="bi bi-pc-display-horizontal"></i></div>
+            <div class="device-item-info">
+                <span class="device-item-name">Workstation</span>
+                <span class="device-item-desc">Legitimate client</span>
+            </div>
+            <span class="device-item-badge">WS</span>
+        </div>
+        
+        <div class="device-item" draggable="true" data-type="attacker" data-label="Attacker">
+            <div class="device-item-icon attacker-icon"><i class="bi bi-bug-fill"></i></div>
+            <div class="device-item-info">
+                <span class="device-item-name">Attacker</span>
+                <span class="device-item-desc">Malicious node</span>
+            </div>
+            <span class="device-item-badge danger">ATK</span>
+        </div>
+        
+        <div class="device-item" draggable="true" data-type="firewall" data-label="Firewall">
+            <div class="device-item-icon firewall-icon"><i class="bi bi-shield-fill-check"></i></div>
+            <div class="device-item-info">
+                <span class="device-item-name">Firewall</span>
+                <span class="device-item-desc">Packet filtering</span>
+            </div>
+            <span class="device-item-badge">FW</span>
+        </div>
+
+        <div class="palette-section-label mt-3">Tools</div>
+        <div class="tool-btns">
+            <button class="tool-btn active" id="toolSelect" title="Select/Move">
+                <i class="bi bi-cursor-fill"></i> Select
+            </button>
+            <button class="tool-btn" id="toolConnect" title="Draw Connection">
+                <i class="bi bi-bezier2"></i> Connect
+            </button>
+            <button class="tool-btn" id="toolDelete" title="Delete">
+                <i class="bi bi-trash3"></i> Delete
+            </button>
+            <button class="tool-btn" id="toolTerminal" title="Open Terminal">
+                <i class="bi bi-terminal-fill"></i> Terminal
+            </button>
+        </div>
+
+        <!-- Device Info Panel -->
+        <div id="deviceInfoPanel" class="device-info-panel d-none">
+            <div class="device-info-title">Device Properties</div>
+            <div id="deviceInfoContent"></div>
+        </div>
+    </aside>
+
+    <!-- Canvas Area -->
+    <div class="canvas-container" id="canvasContainer">
+        <canvas id="workspaceCanvas"></canvas>
+        
+        <!-- Canvas Overlay for instructions -->
+        <div class="canvas-help" id="canvasHelp">
+            <div class="canvas-help-inner">
+                <i class="bi bi-diagram-3-fill" style="font-size:3rem;color:var(--primary);opacity:0.5;"></i>
+                <p class="mt-3 text-muted">Drag devices from the left panel onto the canvas</p>
+                <p class="text-muted small">Use "Connect" tool to link devices together</p>
+                <div class="d-flex gap-2 justify-content-center mt-3">
+                    <button class="btn-xs-action" id="loadTemplate">
+                        <i class="bi bi-lightning-fill me-1"></i>Load Default Topology
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Zoom Controls -->
+        <div class="canvas-controls">
+            <button class="canvas-ctrl-btn" id="zoomIn" title="Zoom In"><i class="bi bi-zoom-in"></i></button>
+            <button class="canvas-ctrl-btn" id="zoomOut" title="Zoom Out"><i class="bi bi-zoom-out"></i></button>
+            <button class="canvas-ctrl-btn" id="resetView" title="Reset View"><i class="bi bi-fullscreen"></i></button>
+        </div>
+        
+        <!-- Node Counter -->
+        <div class="canvas-stats">
+            <span><i class="bi bi-hdd-network me-1 text-primary"></i><span id="nodeCounter">0</span> Nodes</span>
+            <span><i class="bi bi-bezier2 me-1 text-info"></i><span id="linkCounter">0</span> Links</span>
+        </div>
+    </div>
+
+    <!-- Properties Panel -->
+    <aside class="properties-panel" id="propertiesPanel">
+        <div class="palette-header">
+            <i class="bi bi-sliders me-2"></i>
+            Properties
+        </div>
+        <div id="propContent">
+            <div class="prop-empty">
+                <i class="bi bi-cursor-text"></i>
+                <p>Click a device to see its properties</p>
+            </div>
+        </div>
+        
+        <div class="palette-header mt-3">
+            <i class="bi bi-list-ul me-2"></i>
+            Topology
+        </div>
+        <div id="topologyList" class="topology-list">
+            <div class="prop-empty">
+                <i class="bi bi-diagram-3"></i>
+                <p>No devices added yet</p>
+            </div>
+        </div>
+
+        <!-- Workspace Name -->
+        <div class="mt-3 px-2">
+            <label class="prop-label">Workspace Name</label>
+            <input type="text" class="prop-input" id="workspaceName" value="My Network Topology" placeholder="Workspace name">
+        </div>
+    </aside>
+</div>
+
+<!-- Save Modal -->
+<div class="modal fade" id="saveModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-modal">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-white">Save Workspace</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Workspace Name</label>
+                    <input type="text" class="form-control custom-input" id="saveWsName" value="My Network Topology">
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn-primary-action" id="confirmSave">
+                    <i class="bi bi-save2 me-1"></i>Save Workspace
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Load Modal -->
+<div class="modal fade" id="loadModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-modal">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-white">Load Workspace</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="workspaceList" class="workspace-list"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dynamic Simulation Modal -->
+<div class="modal fade" id="simulateModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content glass-modal">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-white"><i class="bi bi-cpu-fill text-primary me-2"></i>NS2 Topology Simulation</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Defense Mode</label>
+                        <select class="form-select custom-input" id="simDefenseMode">
+                            <option value="none">None (No Protection)</option>
+                            <option value="static">Static Threshold</option>
+                            <option value="dtaf">DTAF (Dynamic Adaptive)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Attack Type</label>
+                        <select class="form-select custom-input" id="simAttackType">
+                            <option value="syn_flood">🔴 SYN Flood (TCP)</option>
+                            <option value="udp_flood">🟠 UDP Flood</option>
+                            <option value="icmp_flood">🟡 ICMP Flood</option>
+                            <option value="http_flood">🔵 HTTP Flood</option>
+                            <option value="slowloris">🟣 Slowloris</option>
+                            <option value="amplification">⚫ Amplification (DDoS)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Attack Strength (PPS): <span id="simPpsLabel" class="text-primary fw-bold">0</span></label>
+                        <input type="range" class="form-range" id="simAttackPps" min="0" max="5000" step="100" value="0" style="accent-color: var(--primary);">
+                        <div class="d-flex justify-content-between" style="font-size:0.65rem;color:var(--text-dim);">
+                            <span>0 (None)</span><span>1000</span><span>2500</span><span>5000 (Extreme)</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Duration: <span id="simDurationLabel" class="text-primary fw-bold">60s</span></label>
+                        <input type="range" class="form-range" id="simDuration" min="10" max="120" step="10" value="60" style="accent-color: var(--primary);">
+                        <div class="d-flex justify-content-between" style="font-size:0.65rem;color:var(--text-dim);">
+                            <span>10s</span><span>60s</span><span>120s</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="simLoading" class="text-center mt-4 d-none">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-3 text-white-50" id="simLoadingText">Generating NS2 Script...</p>
+                </div>
+                
+                <div id="simPlaybackPanel" class="mt-4 d-none">
+                    <h6 class="text-white mb-2"><i class="bi bi-play-circle-fill text-success me-2"></i>Live Simulation Playback</h6>
+                    <div class="progress mb-3" style="height: 10px; background-color: rgba(255,255,255,0.1);">
+                        <div id="playbackProgress" class="progress-bar bg-success" role="progressbar" style="width: 0%; transition: width 0.1s linear;"></div>
+                    </div>
+                    
+                    <div class="console-window p-3 rounded" style="background: #111; border: 1px solid #333; height: 150px; overflow-y: auto; font-family: monospace; font-size: 0.85rem; scroll-behavior: smooth;">
+                        <div id="liveConsole" style="color: #0f0;">
+                            > Simulation playback ready...<br>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="simResults" class="mt-4 d-none">
+                    <h6 class="text-white mb-3"><i class="bi bi-graph-up-arrow text-success me-2"></i>Simulation Results</h6>
+                    <div class="row text-center g-2">
+                        <div class="col-4">
+                            <div class="stat-card p-2" style="background: rgba(16,185,129,0.1); border: 1px solid #10b981;">
+                                <div class="text-muted" style="font-size:0.7rem">Throughput</div>
+                                <div class="text-white fw-bold" id="resThroughput">0 Kbps</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-card p-2" style="background: rgba(239,68,68,0.1); border: 1px solid #ef4444;">
+                                <div class="text-muted" style="font-size:0.7rem">Packet Loss</div>
+                                <div class="text-white fw-bold" id="resLoss">0%</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-card p-2" style="background: rgba(99,102,241,0.1); border: 1px solid #6366f1;">
+                                <div class="text-muted" style="font-size:0.7rem">Avg Delay</div>
+                                <div class="text-white fw-bold" id="resDelay">0 ms</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-card p-2" style="background: rgba(59,130,246,0.1); border: 1px solid #3b82f6;">
+                                <div class="text-muted" style="font-size:0.7rem">Delivery Rate</div>
+                                <div class="text-white fw-bold" id="resDelivery">0%</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-card p-2" style="background: rgba(245,158,11,0.1); border: 1px solid #f59e0b;">
+                                <div class="text-muted" style="font-size:0.7rem">Attack Blocked</div>
+                                <div class="text-white fw-bold" id="resBlocked">0</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-card p-2" style="background: rgba(168,85,247,0.1); border: 1px solid #a855f7;">
+                                <div class="text-muted" style="font-size:0.7rem">Attack Type</div>
+                                <div class="text-white fw-bold" id="resAttackType" style="font-size:0.75rem">—</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-center">
+                        <a href="/simulation" class="btn btn-sm btn-outline-primary me-1">Open Full Analytics <i class="bi bi-box-arrow-up-right"></i></a>
+                        <a href="/results" class="btn btn-sm btn-outline-info">View Results <i class="bi bi-bar-chart-fill"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn-primary-action" id="runDynamicSimBtn">
+                    <i class="bi bi-lightning-fill me-1"></i>Launch NS2
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Programmable Terminal Overlay -->
+<div id="terminalOverlay" class="terminal-overlay d-none">
+    <div class="terminal-header">
+        <div class="terminal-title"><i class="bi bi-terminal-fill me-2"></i>DTAF Command Line Interface</div>
+        <button class="terminal-close" id="closeTerminalBtn"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="terminal-body" id="terminalOutput">
+        <div class="terminal-line"><span class="terminal-prompt text-success">sys</span> <span class="text-white">DTAF Shield Terminal initialized v1.0</span></div>
+        <div class="terminal-line"><span class="text-muted">Type 'help' to see available commands.</span></div>
+    </div>
+    <div class="terminal-input-row">
+        <span class="terminal-prompt text-primary">root@dtaf:~#</span>
+        <div style="position:relative; flex:1; display:flex; align-items:center; height: 100%;">
+            <input type="text" id="terminalSuggestion" class="terminal-input" disabled style="position:absolute; width:100%; color:rgba(255,255,255,0.2) !important; pointer-events:none; z-index:0; background:transparent; outline:none; border:none; padding:0; top:0; left:0;">
+            <input type="text" id="terminalInput" class="terminal-input" autocomplete="off" spellcheck="false" placeholder="Enter command..." style="position:relative; z-index:1; background:transparent; width:100%; padding:0;">
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/workspace.js') }}"></script>
+{% endblock %}

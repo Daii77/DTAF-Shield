@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Dashboard <span class="gradient-text">Overview</span></h1>
+        <p class="page-subtitle">Welcome to DTAF Shield — Advanced Network Defense Simulation Platform</p>
+    </div>
+    <a href="/workspace" class="btn-primary-action">
+        <i class="bi bi-diagram-3-fill me-2"></i>Open Workspace
+    </a>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card" data-color="blue">
+        <div class="stat-card-icon"><i class="bi bi-shield-check-fill"></i></div>
+        <div class="stat-card-body">
+            <div class="stat-label">Defense Modes</div>
+            <div class="stat-value">3</div>
+            <div class="stat-change positive"><i class="bi bi-check-circle me-1"></i>DTAF Active</div>
+        </div>
+    </div>
+    <div class="stat-card" data-color="green">
+        <div class="stat-card-icon"><i class="bi bi-play-circle-fill"></i></div>
+        <div class="stat-card-body">
+            <div class="stat-label">Simulations Run</div>
+            <div class="stat-value" id="simCount">0</div>
+            <div class="stat-change neutral"><i class="bi bi-clock-history me-1"></i>Session stats</div>
+        </div>
+    </div>
+    <div class="stat-card" data-color="cyan">
+        <div class="stat-card-icon"><i class="bi bi-diagram-3-fill"></i></div>
+        <div class="stat-card-body">
+            <div class="stat-label">Network Devices</div>
+            <div class="stat-value" id="deviceCount">0</div>
+            <div class="stat-change neutral"><i class="bi bi-hdd-network me-1"></i>In workspace</div>
+        </div>
+    </div>
+    <div class="stat-card" data-color="purple">
+        <div class="stat-card-icon"><i class="bi bi-activity"></i></div>
+        <div class="stat-card-body">
+            <div class="stat-label">DTAF Efficiency</div>
+            <div class="stat-value">98<span style="font-size:1.2rem">%</span></div>
+            <div class="stat-change positive"><i class="bi bi-arrow-up me-1"></i>Attack isolation</div>
+        </div>
+    </div>
+</div>
+
+<!-- Architecture + Quick Launch -->
+<div class="two-col-grid mt-4">
+    <!-- Architecture Diagram -->
+    <div class="glass-panel">
+        <div class="panel-header">
+            <h3 class="panel-title"><i class="bi bi-diagram-2 text-primary me-2"></i>DTAF System Architecture</h3>
+        </div>
+        <div class="arch-diagram">
+            <svg viewBox="0 0 700 240" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;">
+                <!-- Connections -->
+                <line x1="140" y1="80" x2="310" y2="120" stroke="rgba(16,185,129,0.4)" stroke-width="2" stroke-dasharray="6,3"/>
+                <line x1="140" y1="170" x2="310" y2="120" stroke="rgba(239,68,68,0.4)" stroke-width="2" stroke-dasharray="6,3"/>
+                <line x1="390" y1="120" x2="560" y2="120" stroke="rgba(99,102,241,0.5)" stroke-width="2.5"/>
+                
+                <!-- Packets animation on lines -->
+                <circle class="arch-packet legit" cx="140" cy="80" r="4" fill="#10b981">
+                    <animateMotion dur="2s" repeatCount="indefinite" path="M0,0 L170,40"/>
+                </circle>
+                <circle class="arch-packet attack" cx="140" cy="170" r="4" fill="#ef4444">
+                    <animateMotion dur="2.5s" repeatCount="indefinite" path="M0,0 L170,-50"/>
+                </circle>
+                <circle class="arch-packet legit" cx="390" cy="120" r="4" fill="#6366f1">
+                    <animateMotion dur="1.5s" repeatCount="indefinite" path="M0,0 L170,0"/>
+                </circle>
+
+                <!-- Legitimate User Node -->
+                <circle cx="110" cy="80" r="40" fill="rgba(16,185,129,0.1)" stroke="#10b981" stroke-width="2"/>
+                <text x="110" y="76" text-anchor="middle" font-family="bootstrap-icons" font-size="22" fill="#10b981">&#xF4E1;</text>
+                <text x="110" y="94" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="Space Grotesk">Legitimate</text>
+                <text x="110" y="105" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="Space Grotesk">User</text>
+                <circle cx="110" cy="80" r="45" fill="none" stroke="#10b981" stroke-width="1" opacity="0.3">
+                    <animate attributeName="r" from="40" to="55" dur="2s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity" from="0.4" to="0" dur="2s" repeatCount="indefinite"/>
+                </circle>
+
+                <!-- Attacker Node -->
+                <circle cx="110" cy="170" r="40" fill="rgba(239,68,68,0.1)" stroke="#ef4444" stroke-width="2"/>
+                <text x="110" y="166" text-anchor="middle" font-family="bootstrap-icons" font-size="22" fill="#ef4444">&#xF2A0;</text>
+                <text x="110" y="184" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="Space Grotesk">Malicious</text>
+                <text x="110" y="195" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="Space Grotesk">Attacker</text>
+
+                <!-- Router/DTAF Node -->
+                <rect x="310" y="80" width="80" height="80" rx="12" fill="rgba(99,102,241,0.15)" stroke="#6366f1" stroke-width="2.5"/>
+                <text x="350" y="118" text-anchor="middle" font-family="bootstrap-icons" font-size="26" fill="#6366f1">&#xF52B;</text>
+                <text x="350" y="136" text-anchor="middle" font-size="9" fill="#6366f1" font-family="Space Grotesk" font-weight="600">DTAF Router</text>
+                <text x="350" y="147" text-anchor="middle" font-size="8" fill="#94a3b8" font-family="Space Grotesk">Edge Node</text>
+                <!-- DTAF Badge -->
+                <rect x="330" y="72" width="40" height="14" rx="7" fill="#6366f1"/>
+                <text x="350" y="82" text-anchor="middle" font-size="7.5" fill="white" font-family="Space Grotesk" font-weight="700">DTAF</text>
+
+                <!-- Server Node -->
+                <circle cx="590" cy="120" r="40" fill="rgba(14,165,233,0.1)" stroke="#0ea5e9" stroke-width="2"/>
+                <text x="590" y="116" text-anchor="middle" font-family="bootstrap-icons" font-size="22" fill="#0ea5e9">&#xF306;</text>
+                <text x="590" y="134" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="Space Grotesk">Target</text>
+                <text x="590" y="145" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="Space Grotesk">Server</text>
+
+                <!-- Labels -->
+                <text x="110" y="230" text-anchor="middle" font-size="10" fill="#475569" font-family="Space Grotesk">Node 0, Node 1</text>
+                <text x="350" y="230" text-anchor="middle" font-size="10" fill="#6366f1" font-family="Space Grotesk">Node 2 (Core)</text>
+                <text x="590" y="230" text-anchor="middle" font-size="10" fill="#475569" font-family="Space Grotesk">Node 3 (Sink)</text>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="glass-panel">
+        <div class="panel-header">
+            <h3 class="panel-title"><i class="bi bi-lightning-fill text-warning me-2"></i>Quick Launch</h3>
+        </div>
+        <div class="quick-actions">
+            <a href="/workspace" class="quick-action-card">
+                <div class="qa-icon" style="--qa-color: #6366f1;">
+                    <i class="bi bi-diagram-3-fill"></i>
+                </div>
+                <div class="qa-body">
+                    <div class="qa-title">Build Topology</div>
+                    <div class="qa-desc">Design custom network with routers, switches, servers</div>
+                </div>
+                <i class="bi bi-arrow-right qa-arrow"></i>
+            </a>
+            <a href="/simulation" class="quick-action-card">
+                <div class="qa-icon" style="--qa-color: #10b981;">
+                    <i class="bi bi-play-circle-fill"></i>
+                </div>
+                <div class="qa-body">
+                    <div class="qa-title">Run Simulation</div>
+                    <div class="qa-desc">Execute real-time DoS attack simulation</div>
+                </div>
+                <i class="bi bi-arrow-right qa-arrow"></i>
+            </a>
+            <a href="/compare" class="quick-action-card">
+                <div class="qa-icon" style="--qa-color: #f59e0b;">
+                    <i class="bi bi-layers-fill"></i>
+                </div>
+                <div class="qa-body">
+                    <div class="qa-title">Compare Defense Modes</div>
+                    <div class="qa-desc">None vs Static vs DTAF side-by-side</div>
+                </div>
+                <i class="bi bi-arrow-right qa-arrow"></i>
+            </a>
+            <a href="/results" class="quick-action-card">
+                <div class="qa-icon" style="--qa-color: #0ea5e9;">
+                    <i class="bi bi-bar-chart-fill"></i>
+                </div>
+                <div class="qa-body">
+                    <div class="qa-title">View Analytics</div>
+                    <div class="qa-desc">Detailed metrics and forensic reports</div>
+                </div>
+                <i class="bi bi-arrow-right qa-arrow"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- DTAF Info Panel -->
+<div class="glass-panel mt-4">
+    <div class="panel-header">
+        <h3 class="panel-title"><i class="bi bi-info-circle-fill text-info me-2"></i>About DTAF Mechanism</h3>
+    </div>
+    <div class="dtaf-info-grid">
+        <div class="dtaf-info-item">
+            <div class="dtaf-info-icon"><i class="bi bi-graph-up-arrow"></i></div>
+            <h4>Adaptive Learning</h4>
+            <p>DTAF continuously monitors baseline traffic to establish a dynamic threshold that adjusts in real time based on legitimate traffic patterns.</p>
+        </div>
+        <div class="dtaf-info-item">
+            <div class="dtaf-info-icon"><i class="bi bi-funnel-fill"></i></div>
+            <h4>Intelligent Filtering</h4>
+            <p>When traffic exceeds the adaptive threshold, the system identifies and drops malicious packets with 98% accuracy while preserving legitimate flows.</p>
+        </div>
+        <div class="dtaf-info-item">
+            <div class="dtaf-info-icon"><i class="bi bi-speedometer2"></i></div>
+            <h4>Performance Gains</h4>
+            <p>DTAF reduces delay by 85% and packet loss by 95% compared to no-defense scenarios, maintaining throughput even under high-intensity DDoS attacks.</p>
+        </div>
+        <div class="dtaf-info-item">
+            <div class="dtaf-info-icon"><i class="bi bi-shield-fill-check"></i></div>
+            <h4>NS2 Validated</h4>
+            <p>All simulation logic is based on NS2 (Network Simulator 2) methodology with mathematically accurate traffic modeling and defense algorithms.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load session stats
+document.addEventListener('DOMContentLoaded', () => {
+    const simData = localStorage.getItem('dtaf_last_sim');
+    if (simData) {
+        document.getElementById('simCount').textContent = 
+            parseInt(localStorage.getItem('dtaf_sim_count') || '1');
+    }
+    
+    const ws = localStorage.getItem('dtaf_workspace');
+    if (ws) {
+        try {
+            const parsed = JSON.parse(ws);
+            document.getElementById('deviceCount').textContent = 
+                (parsed.nodes || []).length;
+        } catch(e) {}
+    }
+});
+</script>
+{% endblock %}

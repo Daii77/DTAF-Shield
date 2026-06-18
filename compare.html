@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% block title %}Compare Defense Modes{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Defense Mode <span class="gradient-text">Comparison</span></h1>
+        <p class="page-subtitle">Run all three defense modes simultaneously and compare performance metrics</p>
+    </div>
+</div>
+
+<div class="compare-config glass-panel mb-4">
+    <div class="panel-header">
+        <h3 class="panel-title"><i class="bi bi-sliders me-2 text-info"></i>Comparison Configuration</h3>
+    </div>
+    <div class="compare-controls">
+        <div class="compare-ctrl-item">
+            <label class="sim-label">Attack Intensity</label>
+            <div class="attack-slider-wrap">
+                <input type="range" class="attack-slider" id="cmpAttackSlider" min="100" max="2000" step="100" value="1000">
+                <div class="attack-slider-labels"><span>100</span><span>1000</span><span>2000</span></div>
+            </div>
+            <div class="text-center mt-1"><span id="cmpAttackDisplay" class="text-primary fw-bold">1000 pps</span></div>
+        </div>
+        <div class="compare-ctrl-item">
+            <label class="sim-label">Duration</label>
+            <div class="attack-slider-wrap">
+                <input type="range" class="attack-slider" id="cmpDurationSlider" min="30" max="120" step="10" value="60">
+                <div class="attack-slider-labels"><span>30s</span><span>60s</span><span>120s</span></div>
+            </div>
+            <div class="text-center mt-1"><span id="cmpDurationDisplay" class="text-primary fw-bold">60s</span></div>
+        </div>
+        <div class="compare-ctrl-item d-flex align-items-end">
+            <button class="run-btn w-100" id="runCompare">
+                <div class="run-btn-inner">
+                    <i class="bi bi-layers-fill run-btn-icon"></i>
+                    <span class="run-btn-text">Compare All Modes</span>
+                </div>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Summary comparison table -->
+<div id="compareTable" class="glass-panel mb-4 d-none">
+    <div class="panel-header">
+        <h3 class="panel-title"><i class="bi bi-table text-warning me-2"></i>Performance Summary</h3>
+    </div>
+    <div class="cmp-table-wrap">
+        <table class="cmp-table">
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th class="mode-none"><i class="bi bi-slash-circle me-1"></i>No Defense</th>
+                    <th class="mode-static"><i class="bi bi-sliders me-1"></i>Static Threshold</th>
+                    <th class="mode-dtaf"><i class="bi bi-shield-fill-check me-1"></i>DTAF</th>
+                </tr>
+            </thead>
+            <tbody id="cmpTableBody">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Charts comparison -->
+<div id="cmpCharts" class="d-none">
+    <div class="cmp-charts-grid">
+        <div class="glass-panel result-chart-panel span-2">
+            <div class="panel-header">
+                <h3 class="panel-title"><i class="bi bi-speedometer2 text-success me-2"></i>Throughput Comparison (Kbps)</h3>
+            </div>
+            <div class="chart-wrap" style="height:300px;"><canvas id="cmpThroughputChart"></canvas></div>
+        </div>
+        <div class="glass-panel result-chart-panel span-2">
+            <div class="panel-header">
+                <h3 class="panel-title"><i class="bi bi-stopwatch text-warning me-2"></i>Delay Comparison (ms)</h3>
+            </div>
+            <div class="chart-wrap" style="height:300px;"><canvas id="cmpDelayChart"></canvas></div>
+        </div>
+        <div class="glass-panel result-chart-panel">
+            <div class="panel-header">
+                <h3 class="panel-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Packet Loss Comparison</h3>
+            </div>
+            <div class="chart-wrap" style="height:280px;"><canvas id="cmpLossChart"></canvas></div>
+        </div>
+        <div class="glass-panel result-chart-panel">
+            <div class="panel-header">
+                <h3 class="panel-title"><i class="bi bi-bar-chart text-primary me-2"></i>Avg Performance Comparison</h3>
+            </div>
+            <div class="chart-wrap" style="height:280px;"><canvas id="cmpRadarChart"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading -->
+<div id="cmpLoading" class="compare-loading d-none">
+    <div class="cmp-spinner">
+        <div class="spinner-ring"></div>
+        <div class="spinner-ring"></div>
+        <div class="spinner-ring"></div>
+    </div>
+    <p>Running all 3 defense modes...</p>
+    <div class="cmp-mode-status">
+        <span id="cmpStatus1" class="cmp-mode-pill">None</span>
+        <span id="cmpStatus2" class="cmp-mode-pill">Static</span>
+        <span id="cmpStatus3" class="cmp-mode-pill">DTAF</span>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.font.family = "'Space Grotesk', sans-serif";
+
+    const attackSlider = document.getElementById('cmpAttackSlider');
+    const durationSlider = document.getElementById('cmpDurationSlider');
+    
+    attackSlider.addEventListener('input', () => {
+        document.getElementById('cmpAttackDisplay').textContent = attackSlider.value + ' pps';
+    });
+    durationSlider.addEventListener('input', () => {
+        document.getElementById('cmpDurationDisplay').textContent = durationSlider.value + 's';
+    });
+
+    const cmpCharts = [];
+
+    document.getElementById('runCompare').addEventListener('click', async () => {
+        const btn = document.getElementById('runCompare');
+        const loading = document.getElementById('cmpLoading');
+        
+        btn.disabled = true;
+        document.getElementById('cmpCharts').classList.add('d-none');
+        document.getElementById('compareTable').classList.add('d-none');
+        loading.classList.remove('d-none');
+
+        ['cmpStatus1','cmpStatus2','cmpStatus3'].forEach(id => {
+            document.getElementById(id).className = 'cmp-mode-pill running';
+        });
+
+        try {
+            const res = await fetch('/api/simulate_compare', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    attack_pps: parseInt(attackSlider.value),
+                    duration: parseInt(durationSlider.value),
+                    topology: JSON.parse(localStorage.getItem('dtaf_workspace') || 'null')
+                })
+            });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+
+            // Update status indicators
+            document.getElementById('cmpStatus1').className = 'cmp-mode-pill done';
+            document.getElementById('cmpStatus2').className = 'cmp-mode-pill done';
+            document.getElementById('cmpStatus3').className = 'cmp-mode-pill done done-dtaf';
+
+            loading.classList.add('d-none');
+            renderComparison(data);
+        } catch(err) {
+            loading.classList.add('d-none');
+            btn.disabled = false;
+            alert('Error: ' + err.message);
+        }
+
+        btn.disabled = false;
+    });
+
+    function renderComparison(data) {
+        cmpCharts.forEach(c => c.destroy());
+        cmpCharts.length = 0;
+
+        const none = data.none, static_ = data.static, dtaf = data.dtaf;
+        const labels = none.labels;
+
+        const colors = {
+            none: { line: '#ef4444', bg: 'rgba(239,68,68,0.08)' },
+            static: { line: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
+            dtaf: { line: '#10b981', bg: 'rgba(16,185,129,0.08)' }
+        };
+
+        function mkDataset(mode, key, label) {
+            return {
+                label: label,
+                data: data[mode][key],
+                borderColor: colors[mode].line,
+                backgroundColor: colors[mode].bg,
+                borderWidth: 2.5, fill: true, tension: 0.3, pointRadius: 0
+            };
+        }
+
+        function commonOpts(yTitle) {
+            return {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', align: 'end', labels: { color: '#cbd5e1', font: { size: 11 }, padding: 14, usePointStyle: true } },
+                    tooltip: { backgroundColor: 'rgba(10,15,30,0.95)', titleColor: '#f8fafc', bodyColor: '#cbd5e1', borderColor: 'rgba(99,102,241,0.3)', borderWidth: 1, padding: 12, cornerRadius: 8 }
+                },
+                scales: {
+                    x: { title: { display: true, text: 'Time (s)', color: '#64748b' }, ticks: { color: '#64748b', maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                    y: { title: { display: true, text: yTitle, color: '#64748b' }, ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true }
+                }
+            };
+        }
+
+        cmpCharts.push(new Chart(document.getElementById('cmpThroughputChart'), {
+            type: 'line',
+            data: { labels, datasets: [ mkDataset('none','throughput','None'), mkDataset('static','throughput','Static'), mkDataset('dtaf','throughput','DTAF') ] },
+            options: commonOpts('Throughput (Kbps)')
+        }));
+
+        cmpCharts.push(new Chart(document.getElementById('cmpDelayChart'), {
+            type: 'line',
+            data: { labels, datasets: [ mkDataset('none','delay','None'), mkDataset('static','delay','Static'), mkDataset('dtaf','delay','DTAF') ] },
+            options: commonOpts('Delay (ms)')
+        }));
+
+        cmpCharts.push(new Chart(document.getElementById('cmpLossChart'), {
+            type: 'line',
+            data: { labels, datasets: [ mkDataset('none','packet_loss','None'), mkDataset('static','packet_loss','Static'), mkDataset('dtaf','packet_loss','DTAF') ] },
+            options: commonOpts('Loss (%)')
+        }));
+
+        // Radar/Bar comparison chart
+        const sNone = none.summary || {}, sStat = static_.summary || {}, sDtaf = dtaf.summary || {};
+        const maxThru = Math.max(sNone.avg_throughput||1, sStat.avg_throughput||1, sDtaf.avg_throughput||1);
+        const maxDelay = Math.max(sNone.avg_delay||1, sStat.avg_delay||1, sDtaf.avg_delay||1);
+        const maxLoss = Math.max(sNone.avg_loss||1, sStat.avg_loss||1, sDtaf.avg_loss||1);
+
+        cmpCharts.push(new Chart(document.getElementById('cmpRadarChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Avg Throughput\n(Kbps)', 'Avg Delay\n(ms)', 'Avg Loss\n(%)'],
+                datasets: [
+                    { label: 'No Defense', data: [sNone.avg_throughput||0, sNone.avg_delay||0, sNone.avg_loss||0], backgroundColor: 'rgba(239,68,68,0.7)', borderColor: '#ef4444', borderWidth: 1.5 },
+                    { label: 'Static Threshold', data: [sStat.avg_throughput||0, sStat.avg_delay||0, sStat.avg_loss||0], backgroundColor: 'rgba(245,158,11,0.7)', borderColor: '#f59e0b', borderWidth: 1.5 },
+                    { label: 'DTAF', data: [sDtaf.avg_throughput||0, sDtaf.avg_delay||0, sDtaf.avg_loss||0], backgroundColor: 'rgba(16,185,129,0.7)', borderColor: '#10b981', borderWidth: 1.5 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', labels: { color: '#cbd5e1', font: { size: 11 }, usePointStyle: true } },
+                    tooltip: { backgroundColor: 'rgba(10,15,30,0.95)', titleColor: '#f8fafc', bodyColor: '#cbd5e1' }
+                },
+                scales: {
+                    x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                    y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true }
+                }
+            }
+        }));
+
+        // Summary Table
+        const tbody = document.getElementById('cmpTableBody');
+        tbody.innerHTML = '';
+        const rows = [
+            { label: 'Avg Throughput (Kbps)', key: 'avg_throughput', better: 'higher' },
+            { label: 'Avg Delay (ms)', key: 'avg_delay', better: 'lower' },
+            { label: 'Avg Packet Loss (%)', key: 'avg_loss', better: 'lower' },
+            { label: 'Attack Packets Blocked', key: 'total_attack_blocked', better: 'higher' },
+            { label: 'Delivery Rate (%)', key: 'delivery_rate', better: 'higher' },
+        ];
+
+        rows.forEach(row => {
+            const vals = { none: sNone[row.key]||0, static: sStat[row.key]||0, dtaf: sDtaf[row.key]||0 };
+            const best = row.better === 'higher' ? Math.max(...Object.values(vals)) : Math.min(...Object.values(vals));
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${row.label}</td>
+                <td class="${vals.none === best ? 'cmp-best-none' : ''}">${vals.none.toLocaleString()}</td>
+                <td class="${vals.static === best ? 'cmp-best-static' : ''}">${vals.static.toLocaleString()}</td>
+                <td class="${vals.dtaf === best ? 'cmp-best-dtaf' : ''}">${vals.dtaf.toLocaleString()} ${vals.dtaf === best ? '<i class="bi bi-trophy-fill ms-1"></i>' : ''}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('compareTable').classList.remove('d-none');
+        document.getElementById('cmpCharts').classList.remove('d-none');
+    }
+});
+</script>
+{% endblock %}

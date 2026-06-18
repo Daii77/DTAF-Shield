@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+{% block title %}Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Analytics & <span class="gradient-text">Results</span></h1>
+        <p class="page-subtitle">Comprehensive performance metrics from the last simulation run</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn-secondary-action" id="exportBtn"><i class="bi bi-download me-1"></i>Export CSV</button>
+        <button class="btn-secondary-action" id="printBtn"><i class="bi bi-printer me-1"></i>Print Report</button>
+    </div>
+</div>
+
+<!-- Summary KPIs -->
+<div id="summaryKpis" class="results-kpi-grid">
+    <div class="result-kpi">
+        <div class="rkpi-icon" style="--kpi-color:#10b981"><i class="bi bi-speedometer2"></i></div>
+        <div class="rkpi-value" id="kpiThroughput">—</div>
+        <div class="rkpi-label">Avg Throughput</div>
+        <div class="rkpi-unit">Kbps</div>
+    </div>
+    <div class="result-kpi">
+        <div class="rkpi-icon" style="--kpi-color:#f59e0b"><i class="bi bi-stopwatch-fill"></i></div>
+        <div class="rkpi-value" id="kpiDelay">—</div>
+        <div class="rkpi-label">Avg Delay</div>
+        <div class="rkpi-unit">ms</div>
+    </div>
+    <div class="result-kpi">
+        <div class="rkpi-icon" style="--kpi-color:#ef4444"><i class="bi bi-exclamation-triangle-fill"></i></div>
+        <div class="rkpi-value" id="kpiLoss">—</div>
+        <div class="rkpi-label">Avg Packet Loss</div>
+        <div class="rkpi-unit">%</div>
+    </div>
+    <div class="result-kpi">
+        <div class="rkpi-icon" style="--kpi-color:#6366f1"><i class="bi bi-shield-fill-check"></i></div>
+        <div class="rkpi-value" id="kpiBlocked">—</div>
+        <div class="rkpi-label">Attack Packets Blocked</div>
+        <div class="rkpi-unit">total</div>
+    </div>
+    <div class="result-kpi">
+        <div class="rkpi-icon" style="--kpi-color:#0ea5e9"><i class="bi bi-check-circle-fill"></i></div>
+        <div class="rkpi-value" id="kpiDelivery">—</div>
+        <div class="rkpi-label">Delivery Rate</div>
+        <div class="rkpi-unit">%</div>
+    </div>
+    <div class="result-kpi">
+        <div class="rkpi-icon" style="--kpi-color:#ec4899"><i class="bi bi-tag-fill"></i></div>
+        <div class="rkpi-value" id="kpiMode">—</div>
+        <div class="rkpi-label">Defense Mode</div>
+        <div class="rkpi-unit"></div>
+    </div>
+</div>
+
+<!-- Charts Grid -->
+<div id="chartsArea">
+    <div class="results-charts-grid">
+        <!-- Traffic Overview -->
+        <div class="glass-panel result-chart-panel span-2">
+            <div class="panel-header">
+                <h3 class="panel-title"><i class="bi bi-activity text-danger me-2"></i>Network Traffic Overview</h3>
+                <span class="panel-badge">Real-time</span>
+            </div>
+            <p class="chart-desc">Total attack traffic vs legitimate traffic over the simulation period. Shows the volume of malicious and normal packets arriving at the router.</p>
+            <div class="chart-wrap" style="height:280px;">
+                <canvas id="trafficOverviewChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Defense Action -->
+        <div class="glass-panel result-chart-panel span-2">
+            <div class="panel-header">
+                <h3 class="panel-title"><i class="bi bi-shield-check text-primary me-2"></i>Defense Action Analysis</h3>
+                <span class="panel-badge">Forensic</span>
+            </div>
+            <p class="chart-desc">Packets dropped by the defense mechanism. Shows how effectively the defense distinguishes attack traffic from legitimate traffic (collateral damage).</p>
+            <div class="chart-wrap" style="height:280px;">
+                <canvas id="defenseOverviewChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Packet Loss -->
+        <div class="glass-panel result-chart-panel">
+            <div class="panel-header">
+                <h3 class="panel-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Legitimate Packet Loss</h3>
+            </div>
+            <div class="chart-wrap" style="height:260px;">
+                <canvas id="lossChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Delay -->
+        <div class="glass-panel result-chart-panel">
+            <div class="panel-header">
+                <h3 class="panel-title"><i class="bi bi-stopwatch text-warning me-2"></i>Network Delay (ms)</h3>
+            </div>
+            <div class="chart-wrap" style="height:260px;">
+                <canvas id="delayChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Throughput -->
+        <div class="glass-panel result-chart-panel">
+            <div class="panel-header">
+                <h3 class="panel-title"><i class="bi bi-speedometer2 text-success me-2"></i>Legitimate Throughput</h3>
+            </div>
+            <div class="chart-wrap" style="height:260px;">
+                <canvas id="throughputChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Passed vs Dropped -->
+        <div class="glass-panel result-chart-panel">
+            <div class="panel-header">
+                <h3 class="panel-title"><i class="bi bi-pie-chart-fill text-info me-2"></i>Traffic Disposition</h3>
+            </div>
+            <div class="chart-wrap" style="height:260px;">
+                <canvas id="dispositionChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- No data placeholder -->
+<div id="noDataMsg" class="no-data-msg d-none">
+    <i class="bi bi-bar-chart" style="font-size:4rem;opacity:0.2;"></i>
+    <h3>No Simulation Data</h3>
+    <p>Run a simulation first to see analytics here.</p>
+    <a href="/simulation" class="btn-primary-action mt-3">
+        <i class="bi bi-play-fill me-2"></i>Run Simulation
+    </a>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const Chart_defaults_setup = () => {
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = "'Space Grotesk', sans-serif";
+        Chart.defaults.font.size = 12;
+    };
+    Chart_defaults_setup();
+
+    function getChartOpts(yTitle) {
+        return {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top', align: 'end', labels: { color: '#cbd5e1', font: { size: 11, weight: '600' }, padding: 16, usePointStyle: true } },
+                tooltip: { backgroundColor: 'rgba(10,15,30,0.95)', titleColor: '#f8fafc', bodyColor: '#cbd5e1', borderColor: 'rgba(99,102,241,0.3)', borderWidth: 1, padding: 12, cornerRadius: 8 }
+            },
+            scales: {
+                x: { title: { display: true, text: 'Time (seconds)', color: '#64748b', font: { size: 11 } }, ticks: { color: '#64748b', maxTicksLimit: 15 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                y: { title: { display: true, text: yTitle, color: '#64748b', font: { size: 11 } }, ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true }
+            }
+        };
+    }
+
+    const raw = localStorage.getItem('dtaf_last_sim');
+    if (!raw) {
+        document.getElementById('chartsArea').classList.add('d-none');
+        document.getElementById('summaryKpis').classList.add('d-none');
+        document.getElementById('noDataMsg').classList.remove('d-none');
+        return;
+    }
+
+    const data = JSON.parse(raw);
+    const sum = data.summary || {};
+
+    // Fill KPIs
+    document.getElementById('kpiThroughput').textContent = sum.avg_throughput || '—';
+    document.getElementById('kpiDelay').textContent = sum.avg_delay || '—';
+    document.getElementById('kpiLoss').textContent = sum.avg_loss || '—';
+    document.getElementById('kpiBlocked').textContent = (sum.total_attack_blocked || 0).toLocaleString();
+    document.getElementById('kpiDelivery').textContent = sum.delivery_rate || '—';
+    document.getElementById('kpiMode').textContent = (data.defense_mode || '—').toUpperCase();
+
+    const modeColors = { none: '#ef4444', static: '#f59e0b', dtaf: '#10b981' };
+    document.querySelector('#kpiMode').closest('.result-kpi').style.setProperty('--kpi-color', modeColors[data.defense_mode] || '#6366f1');
+
+    // Traffic Overview
+    new Chart(document.getElementById('trafficOverviewChart'), {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [
+                { label: 'Attack Traffic (pps)', data: data.attack_traffic, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', borderWidth: 2.5, fill: true, tension: 0.3, pointRadius: 0 },
+                { label: 'Legitimate Traffic (pps)', data: data.legit_traffic, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.08)', borderWidth: 2.5, fill: true, tension: 0.3, pointRadius: 0 },
+                { label: 'Total Incoming (pps)', data: data.total_traffic, borderColor: '#f59e0b', backgroundColor: 'transparent', borderWidth: 1.5, fill: false, tension: 0.3, pointRadius: 0, borderDash: [5,3] }
+            ]
+        },
+        options: getChartOpts('Packets/sec')
+    });
+
+    // Defense Action
+    new Chart(document.getElementById('defenseOverviewChart'), {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [
+                { label: 'Attack Dropped', data: data.attack_dropped, borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.1)', borderWidth: 2.5, fill: true, tension: 0.3, pointRadius: 0 },
+                { label: 'Legit Dropped (Collateral)', data: data.legit_dropped, borderColor: '#ec4899', backgroundColor: 'rgba(236,72,153,0.1)', borderWidth: 2.5, fill: true, tension: 0.3, pointRadius: 0 },
+                { label: 'Legit Passed', data: data.legit_passed, borderColor: '#10b981', backgroundColor: 'transparent', borderWidth: 1.5, fill: false, tension: 0.3, pointRadius: 0, borderDash: [4,2] }
+            ]
+        },
+        options: getChartOpts('Packets/sec')
+    });
+
+    // Packet Loss
+    new Chart(document.getElementById('lossChart'), {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [{ label: 'Packet Loss (%)', data: data.packet_loss, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.12)', borderWidth: 2.5, fill: true, tension: 0.4, pointRadius: 0 }]
+        },
+        options: getChartOpts('Loss (%)')
+    });
+
+    // Delay
+    new Chart(document.getElementById('delayChart'), {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [{ label: 'Network Delay (ms)', data: data.delay, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', borderWidth: 2.5, fill: true, tension: 0.4, pointRadius: 0 }]
+        },
+        options: getChartOpts('Delay (ms)')
+    });
+
+    // Throughput
+    new Chart(document.getElementById('throughputChart'), {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [{ label: 'Throughput (Kbps)', data: data.throughput, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', borderWidth: 2.5, fill: true, tension: 0.4, pointRadius: 0 }]
+        },
+        options: getChartOpts('Throughput (Kbps)')
+    });
+
+    // Disposition Doughnut
+    const totalLegitSent = data.legit_traffic.reduce((a,b) => a+b, 0);
+    const totalLegitPassed = data.legit_passed.reduce((a,b) => a+b, 0);
+    const totalLegitDrop = data.legit_dropped.reduce((a,b) => a+b, 0);
+    const totalAttackDrop = data.attack_dropped.reduce((a,b) => a+b, 0);
+    const totalAttackPass = data.attack_traffic.reduce((a,b) => a+b, 0) - totalAttackDrop;
+
+    new Chart(document.getElementById('dispositionChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Legit Delivered', 'Legit Dropped', 'Attack Blocked', 'Attack Passed'],
+            datasets: [{
+                data: [Math.round(totalLegitPassed), Math.round(totalLegitDrop), Math.round(totalAttackDrop), Math.max(0, Math.round(totalAttackPass))],
+                backgroundColor: ['rgba(16,185,129,0.8)', 'rgba(236,72,153,0.8)', 'rgba(99,102,241,0.8)', 'rgba(239,68,68,0.8)'],
+                borderColor: ['#10b981','#ec4899','#6366f1','#ef4444'],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, cutout: '65%',
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#cbd5e1', font: { size: 11 }, padding: 12, usePointStyle: true } },
+                tooltip: { backgroundColor: 'rgba(10,15,30,0.95)', titleColor: '#f8fafc', bodyColor: '#cbd5e1' }
+            }
+        }
+    });
+
+    // Export CSV
+    document.getElementById('exportBtn').addEventListener('click', () => {
+        let csv = 'Time,Attack_pps,Legit_pps,Total_pps,Attack_Dropped,Legit_Dropped,Legit_Passed,Throughput_Kbps,Delay_ms,Loss_pct\n';
+        data.labels.forEach((t, i) => {
+            csv += `${t},${data.attack_traffic[i]},${data.legit_traffic[i]},${data.total_traffic[i]},${data.attack_dropped[i]},${data.legit_dropped[i]},${data.legit_passed[i]},${data.throughput[i]},${data.delay[i]},${data.packet_loss[i]}\n`;
+        });
+        const a = document.createElement('a');
+        a.href = 'data:text/csv,' + encodeURIComponent(csv);
+        a.download = `dtaf_sim_${data.defense_mode}_${Date.now()}.csv`;
+        a.click();
+    });
+
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+});
+</script>
+{% endblock %}
